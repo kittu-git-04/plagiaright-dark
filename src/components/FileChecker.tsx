@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileUp, File, RefreshCw, X, FileText, Check } from "lucide-react";
+import { FileUp, File, RefreshCw, X, FileText, Check, PercentCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -15,6 +15,12 @@ const FileChecker = () => {
     score: number;
     matches: number;
     fileName: string;
+    content?: string[];
+    plagiarizedParts?: {
+      text: string;
+      source: string;
+      matchPercent: number;
+    }[];
   }>(null);
   
   const { toast } = useToast();
@@ -72,7 +78,23 @@ const FileChecker = () => {
     return true;
   };
 
-  const simulateCheck = () => {
+  const simulateFileRead = async (file: File): Promise<string[]> => {
+    // This would normally use a real file reading method based on file type
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        // Simulate extracting content
+        const paragraphs = [
+          "The concept of artificial intelligence has evolved significantly over the past decades, transforming from theoretical discussions to practical applications.",
+          "Machine learning algorithms now power many aspects of our daily lives, from recommendation systems to autonomous vehicles and natural language processing.",
+          "The ethical implications of AI deployment continue to be debated among experts, with concerns about privacy, bias, and job displacement at the forefront.",
+          "Despite these challenges, the potential benefits of responsibly developed AI technologies remain substantial across healthcare, climate science, and education."
+        ];
+        resolve(paragraphs);
+      }, 1500);
+    });
+  };
+
+  const simulateCheck = async () => {
     if (!file) {
       toast({
         title: "No file selected",
@@ -86,27 +108,107 @@ const FileChecker = () => {
     setProgress(0);
     setResult(null);
     
-    // Simulate progress
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        const newProgress = prev + Math.random() * 10;
-        if (newProgress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setIsChecking(false);
-            // Generate mock result
-            const score = Math.floor(Math.random() * 30); // 0-30% plagiarism
-            setResult({
-              score,
-              matches: score > 0 ? Math.ceil(Math.random() * 5) : 0,
-              fileName: file.name
-            });
-          }, 800);
-          return 100;
-        }
-        return newProgress;
+    // Simulate content extraction
+    const contentProgress = setInterval(() => {
+      setProgress(prev => Math.min(prev + Math.random() * 5, 40));
+    }, 200);
+    
+    try {
+      // Simulate file content reading
+      const content = await simulateFileRead(file);
+      
+      clearInterval(contentProgress);
+      setProgress(40);
+      
+      // Simulate plagiarism checking
+      const checkProgress = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 95) {
+            clearInterval(checkProgress);
+            return 100;
+          }
+          return prev + Math.random() * 5;
+        });
+      }, 300);
+      
+      // Simulate check delay with more realistic timing
+      setTimeout(() => {
+        clearInterval(checkProgress);
+        setProgress(100);
+        
+        // Generate more detailed mock result
+        setTimeout(() => {
+          setIsChecking(false);
+          
+          // Generate a plagiarism score between 0 and 40%
+          const score = Math.floor(Math.random() * 40);
+          
+          // Create plagiarized parts if the score is above 0
+          const plagiarizedParts = score > 0 
+            ? generatePlagiarizedParts(content, score) 
+            : [];
+          
+          setResult({
+            score,
+            matches: plagiarizedParts.length,
+            fileName: file.name,
+            content,
+            plagiarizedParts
+          });
+          
+          toast({
+            title: "Plagiarism check complete",
+            description: `Analysis found ${score}% potentially plagiarized content.`,
+            variant: score > 20 ? "destructive" : score > 10 ? "default" : "default",
+          });
+        }, 800);
+      }, 3000);
+    } catch (error) {
+      clearInterval(contentProgress);
+      setIsChecking(false);
+      toast({
+        title: "Error processing file",
+        description: "There was an error reading your file. Please try again.",
+        variant: "destructive",
       });
-    }, 600);
+    }
+  };
+
+  const generatePlagiarizedParts = (content: string[], totalScore: number) => {
+    if (totalScore === 0) return [];
+    
+    const parts = [];
+    const numParts = Math.ceil(totalScore / 10);
+    const usedIndices = new Set();
+    
+    for (let i = 0; i < numParts; i++) {
+      let randomIndex;
+      // Ensure we don't pick the same paragraph twice
+      do {
+        randomIndex = Math.floor(Math.random() * content.length);
+      } while (usedIndices.has(randomIndex) && usedIndices.size < content.length);
+      
+      usedIndices.add(randomIndex);
+      
+      // Take a portion of the paragraph as the plagiarized part
+      const text = content[randomIndex];
+      const startPos = Math.floor(Math.random() * (text.length / 2));
+      const endPos = startPos + Math.floor(Math.random() * (text.length - startPos - 10) + 10);
+      const plagiarizedText = text.substring(startPos, endPos);
+      
+      // Create a random source
+      const domains = ["academia.edu", "research.net", "scholar.org", "university.edu", "journal.com"];
+      const randomDomain = domains[Math.floor(Math.random() * domains.length)];
+      const source = `https://www.${randomDomain}/article-${Math.floor(Math.random() * 10000)}`;
+      
+      parts.push({
+        text: plagiarizedText,
+        source,
+        matchPercent: Math.floor(Math.random() * 30) + 70 // 70-99% match
+      });
+    }
+    
+    return parts;
   };
 
   const resetCheck = () => {
@@ -210,7 +312,13 @@ const FileChecker = () => {
             {isChecking && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Analyzing document...</span>
+                  <span>
+                    {progress < 40 
+                      ? "Extracting content..." 
+                      : progress < 95 
+                        ? "Analyzing document..." 
+                        : "Finalizing report..."}
+                  </span>
                   <span>{Math.floor(progress)}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
@@ -226,7 +334,25 @@ const FileChecker = () => {
                       ? 'bg-yellow-500/10 border-yellow-500/30' 
                       : 'bg-red-500/10 border-red-500/30'
                 }`}>
-                  <h3 className="font-semibold text-lg mb-4">Plagiarism Check Results</h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                    <h3 className="font-semibold text-lg">Plagiarism Check Results</h3>
+                    <div className="flex items-center mt-2 sm:mt-0">
+                      <PercentCircle className={`h-5 w-5 mr-2 ${
+                        result.score < 10 
+                          ? 'text-green-400' 
+                          : result.score < 20 
+                            ? 'text-yellow-400' 
+                            : 'text-red-400'
+                      }`} />
+                      <span className={`font-medium text-lg ${
+                        result.score < 10 
+                          ? 'text-green-400' 
+                          : result.score < 20 
+                            ? 'text-yellow-400' 
+                            : 'text-red-400'
+                      }`}>{result.score}% Plagiarized</span>
+                    </div>
+                  </div>
                   
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
@@ -235,14 +361,14 @@ const FileChecker = () => {
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Similarity Score:</span>
+                      <span className="text-muted-foreground">Originality Score:</span>
                       <span className={`font-medium ${
                         result.score < 10 
                           ? 'text-green-400' 
                           : result.score < 20 
                             ? 'text-yellow-400' 
                             : 'text-red-400'
-                      }`}>{result.score}%</span>
+                      }`}>{100 - result.score}%</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -250,9 +376,31 @@ const FileChecker = () => {
                       <span className="font-medium">{result.matches}</span>
                     </div>
                     
-                    <div className="pt-4">
-                      <Button className="w-full" variant="outline">
-                        View Detailed Report
+                    {result.plagiarizedParts && result.plagiarizedParts.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <h4 className="text-sm font-medium">Potential Plagiarized Content:</h4>
+                        {result.plagiarizedParts.map((part, idx) => (
+                          <div key={idx} className="p-3 bg-secondary/50 rounded-md border border-border">
+                            <p className="text-sm mb-2">"{part.text}"</p>
+                            <div className="flex justify-between text-xs">
+                              <a href={part.source} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                                {part.source}
+                              </a>
+                              <span className={part.matchPercent > 85 ? 'text-red-400' : 'text-yellow-400'}>
+                                {part.matchPercent}% match
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <div className="pt-4 flex gap-3 flex-wrap">
+                      <Button className="flex-1" variant={result.score > 10 ? "default" : "outline"}>
+                        Download Full Report
+                      </Button>
+                      <Button className="flex-1" variant="outline">
+                        View Detailed Analysis
                       </Button>
                     </div>
                   </div>
