@@ -75,19 +75,6 @@ const Index = () => {
             <TextChecker />
           </div>
         </section>
-        
-        {/* CTA Section */}
-        <section className="py-16 px-4 bg-gradient-to-r from-primary/10 to-accent/10">
-          <div className="container mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to Ensure Your Work is Original?</h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Sign up for a free account today and get full access to all of our plagiarism detection tools.
-            </p>
-            <Button size="lg" className="text-md">
-              Sign Up for Free
-            </Button>
-          </div>
-        </section>
       </main>
       
       <Footer />

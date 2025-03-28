@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Button } from "@/components/ui/button";
 import { Search, FileText, Settings, Shield } from "lucide-react";
 import { Link } from 'react-router-dom';
 
@@ -17,11 +16,6 @@ const Navbar = () => {
           <NavLink href="/" icon={<Search className="mr-2 h-4 w-4" />} text="Check Text" />
           <NavLink href="/document" icon={<FileText className="mr-2 h-4 w-4" />} text="Check Document" />
           <NavLink href="/settings" icon={<Settings className="mr-2 h-4 w-4" />} text="Settings" />
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="sm">Login</Button>
-          <Button size="sm">Sign Up</Button>
         </div>
       </div>
     </nav>

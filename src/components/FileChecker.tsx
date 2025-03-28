@@ -239,17 +239,18 @@ const FileChecker = () => {
                 <p className="text-muted-foreground text-sm mb-4">
                   Supports PDF, DOC, DOCX, and TXT files (max. 10MB)
                 </p>
-                <label>
+                <input
+                  type="file"
+                  id="file-upload"
+                  className="hidden"
+                  accept=".pdf,.doc,.docx,.txt"
+                  onChange={handleFileChange}
+                />
+                <label htmlFor="file-upload" className="cursor-pointer">
                   <Button variant="outline" type="button">
                     <FileText className="mr-2 h-4 w-4" />
                     Browse Files
                   </Button>
-                  <input
-                    type="file"
-                    className="hidden"
-                    accept=".pdf,.doc,.docx,.txt"
-                    onChange={handleFileChange}
-                  />
                 </label>
               </div>
             ) : (
