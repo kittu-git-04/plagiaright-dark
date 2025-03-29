@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileUp, File, RefreshCw, X, FileText, Check, PercentCircle } from "lucide-react";
+import { FileUp, File, RefreshCw, X, FileText, Check, PercentCircle, Edit } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -19,6 +19,10 @@ const FileChecker = () => {
       text: string;
       source: string;
       matchPercent: number;
+    }[];
+    originalContent?: {
+      text: string;
+      originalityPercent: number;
     }[];
   }>(null);
   
@@ -145,17 +149,20 @@ const FileChecker = () => {
             ? generatePlagiarizedParts(content, score) 
             : [];
           
+          const originalContent = generateOriginalContent(content, plagiarizedParts);
+          
           setResult({
             score,
             matches: plagiarizedParts.length,
             fileName: file.name,
             content,
-            plagiarizedParts
+            plagiarizedParts,
+            originalContent
           });
           
           toast({
-            title: "Plagiarism check complete",
-            description: `Analysis found ${score}% potentially plagiarized content.`,
+            title: "Document analysis complete",
+            description: `Analysis found ${score}% potentially plagiarized content and ${100-score}% original content.`,
             variant: score > 20 ? "destructive" : score > 10 ? "default" : "default",
           });
         }, 800);
@@ -203,6 +210,32 @@ const FileChecker = () => {
     }
     
     return parts;
+  };
+
+  const generateOriginalContent = (content: string[], plagiarizedParts: {text: string, source: string, matchPercent: number}[]) => {
+    const plagiarizedTextMap = new Set(plagiarizedParts.map(part => part.text));
+    
+    const originalContent = [];
+    
+    for (const paragraph of content) {
+      if (!plagiarizedTextMap.has(paragraph)) {
+        const isPlagiarized = plagiarizedParts.some(part => paragraph.includes(part.text));
+        
+        if (!isPlagiarized) {
+          originalContent.push({
+            text: paragraph,
+            originalityPercent: 100
+          });
+        } else {
+          originalContent.push({
+            text: paragraph,
+            originalityPercent: Math.floor(Math.random() * 40) + 60
+          });
+        }
+      }
+    }
+    
+    return originalContent;
   };
 
   const resetCheck = () => {
@@ -333,22 +366,28 @@ const FileChecker = () => {
                       : 'bg-red-500/10 border-red-500/30'
                 }`}>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-                    <h3 className="font-semibold text-lg">Plagiarism Check Results</h3>
-                    <div className="flex items-center mt-2 sm:mt-0">
-                      <PercentCircle className={`h-5 w-5 mr-2 ${
-                        result.score < 10 
-                          ? 'text-green-400' 
-                          : result.score < 20 
-                            ? 'text-yellow-400' 
-                            : 'text-red-400'
-                      }`} />
-                      <span className={`font-medium text-lg ${
-                        result.score < 10 
-                          ? 'text-green-400' 
-                          : result.score < 20 
-                            ? 'text-yellow-400' 
-                            : 'text-red-400'
-                      }`}>{result.score}% Plagiarized</span>
+                    <h3 className="font-semibold text-lg">Document Analysis Results</h3>
+                    <div className="flex items-center mt-2 sm:mt-0 gap-4">
+                      <div className="flex items-center">
+                        <PercentCircle className={`h-5 w-5 mr-2 ${
+                          result.score < 10 
+                            ? 'text-green-400' 
+                            : result.score < 20 
+                              ? 'text-yellow-400' 
+                              : 'text-red-400'
+                        }`} />
+                        <span className={`font-medium ${
+                          result.score < 10 
+                            ? 'text-green-400' 
+                            : result.score < 20 
+                              ? 'text-yellow-400' 
+                              : 'text-red-400'
+                        }`}>{result.score}% Plagiarized</span>
+                      </div>
+                      <div className="flex items-center">
+                        <Edit className="h-5 w-5 mr-2 text-green-400" />
+                        <span className="font-medium text-green-400">{100 - result.score}% Original</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -360,13 +399,7 @@ const FileChecker = () => {
                     
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Originality Score:</span>
-                      <span className={`font-medium ${
-                        result.score < 10 
-                          ? 'text-green-400' 
-                          : result.score < 20 
-                            ? 'text-yellow-400' 
-                            : 'text-red-400'
-                      }`}>{100 - result.score}%</span>
+                      <span className={`font-medium text-green-400`}>{100 - result.score}%</span>
                     </div>
                     
                     <div className="flex justify-between items-center">
@@ -374,24 +407,71 @@ const FileChecker = () => {
                       <span className="font-medium">{result.matches}</span>
                     </div>
                     
-                    {result.plagiarizedParts && result.plagiarizedParts.length > 0 && (
-                      <div className="mt-4 space-y-3">
-                        <h4 className="text-sm font-medium">Potential Plagiarized Content:</h4>
-                        {result.plagiarizedParts.map((part, idx) => (
-                          <div key={idx} className="p-3 bg-secondary/50 rounded-md border border-border">
-                            <p className="text-sm mb-2">"{part.text}"</p>
-                            <div className="flex justify-between text-xs">
-                              <a href={part.source} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                                {part.source}
-                              </a>
-                              <span className={part.matchPercent > 85 ? 'text-red-400' : 'text-yellow-400'}>
-                                {part.matchPercent}% match
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                    <div className="mt-6">
+                      <div className="flex space-x-2 border-b border-border mb-4">
+                        <button 
+                          className="py-2 px-4 font-medium focus:outline-none relative text-destructive"
+                          onClick={() => document.getElementById('plagiarized-content')?.scrollIntoView({ behavior: 'smooth' })}
+                        >
+                          Plagiarized Content
+                          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-destructive"></span>
+                        </button>
+                        <button 
+                          className="py-2 px-4 font-medium focus:outline-none relative text-green-400"
+                          onClick={() => document.getElementById('original-content')?.scrollIntoView({ behavior: 'smooth' })}
+                        >
+                          Original Content
+                          <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-400"></span>
+                        </button>
                       </div>
-                    )}
+                    </div>
+                    
+                    <div id="plagiarized-content" className="mt-4">
+                      <h4 className="text-sm font-medium text-destructive mb-3">Plagiarized Content:</h4>
+                      {result.plagiarizedParts && result.plagiarizedParts.length > 0 ? (
+                        <div className="space-y-3">
+                          {result.plagiarizedParts.map((part, idx) => (
+                            <div key={idx} className="p-3 bg-secondary/50 rounded-md border border-border">
+                              <p className="text-sm mb-2">"{part.text}"</p>
+                              <div className="flex justify-between text-xs">
+                                <a href={part.source} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                                  {part.source}
+                                </a>
+                                <span className={part.matchPercent > 85 ? 'text-red-400' : 'text-yellow-400'}>
+                                  {part.matchPercent}% match
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-green-500/10 rounded-md border border-green-500/30">
+                          <p className="text-green-400">No plagiarized content detected!</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div id="original-content" className="mt-6">
+                      <h4 className="text-sm font-medium text-green-400 mb-3">Original Content:</h4>
+                      {result.originalContent && result.originalContent.length > 0 ? (
+                        <div className="space-y-3">
+                          {result.originalContent.map((part, idx) => (
+                            <div key={idx} className="p-3 bg-secondary/50 rounded-md border border-green-500/30">
+                              <p className="text-sm mb-2">"{part.text}"</p>
+                              <div className="flex justify-end text-xs">
+                                <span className="text-green-400">
+                                  {part.originalityPercent}% original
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-red-500/10 rounded-md border border-red-500/30">
+                          <p className="text-red-400">No original content detected!</p>
+                        </div>
+                      )}
+                    </div>
                     
                     <div className="pt-4 flex gap-3 flex-wrap">
                       <Button className="flex-1" variant={result.score > 10 ? "default" : "outline"}>

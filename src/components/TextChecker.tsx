@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, FilePlus2, RefreshCw } from "lucide-react";
+import { Search, FilePlus2, RefreshCw, Edit } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,6 +17,10 @@ const TextChecker = () => {
       text: string;
       confidence: number;
       source?: string;
+    }>;
+    originalContent?: Array<{
+      text: string;
+      originalityPercent: number;
     }>;
   }>(null);
   
@@ -51,9 +55,19 @@ const TextChecker = () => {
             setIsChecking(false);
             // Generate mock result
             const score = Math.floor(Math.random() * 30); // 0-30% plagiarism
+            const matches = score > 0 ? generateMockMatches(text) : [];
+            const originalContent = generateMockOriginalContent(text, matches);
+            
             setResult({
               score,
-              matches: score > 0 ? generateMockMatches(text) : []
+              matches,
+              originalContent
+            });
+            
+            toast({
+              title: "Analysis complete",
+              description: `Found ${score}% potentially plagiarized content and ${100-score}% original content.`,
+              variant: score > 20 ? "destructive" : "default",
             });
           }, 500);
           return 100;
@@ -87,6 +101,26 @@ const TextChecker = () => {
     }
     
     return matches;
+  };
+
+  const generateMockOriginalContent = (text: string, matches: Array<{text: string, confidence: number, source?: string}>) => {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    if (sentences.length === 0) return [];
+    
+    const matchTextSet = new Set(matches.map(match => match.text));
+    const originalContent = [];
+    
+    for (const sentence of sentences) {
+      const trimmedSentence = sentence.trim();
+      if (trimmedSentence.length > 0 && !matchTextSet.has(trimmedSentence)) {
+        originalContent.push({
+          text: trimmedSentence,
+          originalityPercent: Math.floor(Math.random() * 20) + 80 // 80-99% originality
+        });
+      }
+    }
+    
+    return originalContent;
   };
 
   const resetCheck = () => {
@@ -152,59 +186,118 @@ const TextChecker = () => {
             {result && (
               <div className="mt-6 space-y-4 animate-scale-in">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-lg">Plagiarism Check Results</h3>
-                  <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    result.score < 10 
-                      ? 'bg-green-500/20 text-green-400' 
-                      : result.score < 20 
-                        ? 'bg-yellow-500/20 text-yellow-400' 
-                        : 'bg-red-500/20 text-red-400'
-                  }`}>
-                    {result.score}% Match
+                  <h3 className="font-semibold text-lg">Content Analysis Results</h3>
+                  <div className="flex items-center gap-4">
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      result.score < 10 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : result.score < 20 
+                          ? 'bg-yellow-500/20 text-yellow-400' 
+                          : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {result.score}% Plagiarized
+                    </div>
+                    <div className="px-3 py-1 rounded-full text-sm font-medium bg-green-500/20 text-green-400">
+                      {100 - result.score}% Original
+                    </div>
                   </div>
                 </div>
                 
-                {result.matches.length > 0 ? (
-                  <div className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                      We found {result.matches.length} potential instance{result.matches.length !== 1 ? 's' : ''} of matching content:
-                    </p>
-                    
-                    {result.matches.map((match, i) => (
-                      <Card key={i} className="bg-secondary/30 border border-border/50">
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start gap-4">
-                            <div className="space-y-1">
-                              <p className="text-sm font-medium">Matched Text:</p>
-                              <p className="text-sm text-muted-foreground">&quot;{match.text}&quot;</p>
-                              
-                              {match.source && (
-                                <p className="text-xs text-accent mt-2">
-                                  Possible source: {match.source}
-                                </p>
-                              )}
-                            </div>
-                            <div className={`px-2 py-1 rounded-md text-xs font-medium ${
-                              match.confidence < 70 
-                                ? 'bg-yellow-500/20 text-yellow-400' 
-                                : 'bg-red-500/20 text-red-400'
-                            }`}>
-                              {match.confidence}% match
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                {/* Tabs for Plagiarized vs Original Content */}
+                <div className="mt-6">
+                  <div className="flex space-x-2 border-b border-border mb-4">
+                    <button 
+                      className="py-2 px-4 font-medium focus:outline-none relative text-destructive"
+                      onClick={() => document.getElementById('text-plagiarized')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                      Plagiarized Content
+                      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-destructive"></span>
+                    </button>
+                    <button 
+                      className="py-2 px-4 font-medium focus:outline-none relative text-green-400"
+                      onClick={() => document.getElementById('text-original')?.scrollIntoView({ behavior: 'smooth' })}
+                    >
+                      Original Content
+                      <span className="absolute bottom-0 left-0 w-full h-0.5 bg-green-400"></span>
+                    </button>
                   </div>
-                ) : (
-                  <Card className="bg-green-500/10 border border-green-500/30">
-                    <CardContent className="p-4">
-                      <p className="text-green-400">
-                        No plagiarism detected! Your content appears to be original.
-                      </p>
-                    </CardContent>
-                  </Card>
-                )}
+                </div>
+                
+                {/* Plagiarized Content */}
+                <div id="text-plagiarized" className="space-y-4">
+                  <h4 className="text-sm font-medium text-destructive">Plagiarized Content:</h4>
+                  
+                  {result.matches.length > 0 ? (
+                    <div className="space-y-4">
+                      {result.matches.map((match, i) => (
+                        <Card key={i} className="bg-secondary/30 border border-border/50">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">Matched Text:</p>
+                                <p className="text-sm text-muted-foreground">&quot;{match.text}&quot;</p>
+                                
+                                {match.source && (
+                                  <p className="text-xs text-accent mt-2">
+                                    Possible source: {match.source}
+                                  </p>
+                                )}
+                              </div>
+                              <div className={`px-2 py-1 rounded-md text-xs font-medium ${
+                                match.confidence < 70 
+                                  ? 'bg-yellow-500/20 text-yellow-400' 
+                                  : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {match.confidence}% match
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="bg-green-500/10 border border-green-500/30">
+                      <CardContent className="p-4">
+                        <p className="text-green-400">
+                          No plagiarism detected! Your content appears to be original.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+
+                {/* Original Content */}
+                <div id="text-original" className="space-y-4">
+                  <h4 className="text-sm font-medium text-green-400">Original Content:</h4>
+                  
+                  {result.originalContent && result.originalContent.length > 0 ? (
+                    <div className="space-y-4">
+                      {result.originalContent.map((content, i) => (
+                        <Card key={i} className="bg-secondary/30 border border-green-500/30">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start gap-4">
+                              <div className="space-y-1">
+                                <p className="text-sm font-medium">Original Text:</p>
+                                <p className="text-sm text-muted-foreground">&quot;{content.text}&quot;</p>
+                              </div>
+                              <div className="px-2 py-1 rounded-md text-xs font-medium bg-green-500/20 text-green-400">
+                                {content.originalityPercent}% original
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="bg-red-500/10 border border-red-500/30">
+                      <CardContent className="p-4">
+                        <p className="text-red-400">
+                          No original content detected! Your text appears to be entirely plagiarized.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
               </div>
             )}
           </div>
