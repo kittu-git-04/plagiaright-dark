@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { FileUp, File, RefreshCw, X, FileText, Check, PercentCircle } from "lucide-react";
@@ -24,6 +23,7 @@ const FileChecker = () => {
   }>(null);
   
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -78,11 +78,15 @@ const FileChecker = () => {
     return true;
   };
 
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const simulateFileRead = async (file: File): Promise<string[]> => {
-    // This would normally use a real file reading method based on file type
     return new Promise((resolve) => {
       setTimeout(() => {
-        // Simulate extracting content
         const paragraphs = [
           "The concept of artificial intelligence has evolved significantly over the past decades, transforming from theoretical discussions to practical applications.",
           "Machine learning algorithms now power many aspects of our daily lives, from recommendation systems to autonomous vehicles and natural language processing.",
@@ -108,19 +112,16 @@ const FileChecker = () => {
     setProgress(0);
     setResult(null);
     
-    // Simulate content extraction
     const contentProgress = setInterval(() => {
       setProgress(prev => Math.min(prev + Math.random() * 5, 40));
     }, 200);
     
     try {
-      // Simulate file content reading
       const content = await simulateFileRead(file);
       
       clearInterval(contentProgress);
       setProgress(40);
       
-      // Simulate plagiarism checking
       const checkProgress = setInterval(() => {
         setProgress(prev => {
           if (prev >= 95) {
@@ -131,19 +132,15 @@ const FileChecker = () => {
         });
       }, 300);
       
-      // Simulate check delay with more realistic timing
       setTimeout(() => {
         clearInterval(checkProgress);
         setProgress(100);
         
-        // Generate more detailed mock result
         setTimeout(() => {
           setIsChecking(false);
           
-          // Generate a plagiarism score between 0 and 40%
           const score = Math.floor(Math.random() * 40);
           
-          // Create plagiarized parts if the score is above 0
           const plagiarizedParts = score > 0 
             ? generatePlagiarizedParts(content, score) 
             : [];
@@ -183,20 +180,17 @@ const FileChecker = () => {
     
     for (let i = 0; i < numParts; i++) {
       let randomIndex;
-      // Ensure we don't pick the same paragraph twice
       do {
         randomIndex = Math.floor(Math.random() * content.length);
       } while (usedIndices.has(randomIndex) && usedIndices.size < content.length);
       
       usedIndices.add(randomIndex);
       
-      // Take a portion of the paragraph as the plagiarized part
       const text = content[randomIndex];
       const startPos = Math.floor(Math.random() * (text.length / 2));
       const endPos = startPos + Math.floor(Math.random() * (text.length - startPos - 10) + 10);
       const plagiarizedText = text.substring(startPos, endPos);
       
-      // Create a random source
       const domains = ["academia.edu", "research.net", "scholar.org", "university.edu", "journal.com"];
       const randomDomain = domains[Math.floor(Math.random() * domains.length)];
       const source = `https://www.${randomDomain}/article-${Math.floor(Math.random() * 10000)}`;
@@ -204,7 +198,7 @@ const FileChecker = () => {
       parts.push({
         text: plagiarizedText,
         source,
-        matchPercent: Math.floor(Math.random() * 30) + 70 // 70-99% match
+        matchPercent: Math.floor(Math.random() * 30) + 70
       });
     }
     
@@ -240,18 +234,21 @@ const FileChecker = () => {
                   Supports PDF, DOC, DOCX, and TXT files (max. 10MB)
                 </p>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   id="file-upload"
                   className="hidden"
                   accept=".pdf,.doc,.docx,.txt"
                   onChange={handleFileChange}
                 />
-                <label htmlFor="file-upload" className="cursor-pointer">
-                  <Button variant="outline" type="button">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Browse Files
-                  </Button>
-                </label>
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  onClick={triggerFileInput}
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Browse Files
+                </Button>
               </div>
             ) : (
               <Card className="p-4 bg-secondary/40">
