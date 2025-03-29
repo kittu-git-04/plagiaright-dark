@@ -60,6 +60,7 @@ const TextChecker = () => {
             const matches = score > 0 ? generateMockMatches(text) : [];
             const originalContent = generateMockOriginalContent(text, matches);
             
+            // Make sure result format matches DetailedAnalysis props
             setResult({
               score,
               matches,

@@ -14,21 +14,21 @@ interface DetailedAnalysisProps {
     score: number;
     fileName?: string;
     content?: string[];
-    matches?: number;
+    // For file checker
     plagiarizedParts?: Array<{
       text: string;
       source: string;
       matchPercent: number;
-    }>;
-    originalContent?: Array<{
-      text: string;
-      originalityPercent: number;
     }>;
     // For text checker
     matches?: Array<{
       text: string;
       confidence: number;
       source?: string;
+    }>;
+    originalContent?: Array<{
+      text: string;
+      originalityPercent: number;
     }>;
   } | null;
   type: 'file' | 'text';
@@ -83,7 +83,9 @@ const DetailedAnalysis = ({ open, onClose, result, type }: DetailedAnalysisProps
             />
             <StatCard 
               title="Matched Sources" 
-              value={type === 'file' ? result.matches?.toString() || '0' : (result.matches?.length || 0).toString()} 
+              value={type === 'file' 
+                ? (result.plagiarizedParts?.length || 0).toString() 
+                : (result.matches?.length || 0).toString()} 
               icon={<ExternalLink />}
               color="text-blue-400"
             />
@@ -210,7 +212,7 @@ const countWords = (result: DetailedAnalysisProps['result']) => {
   if (result.content && Array.isArray(result.content)) {
     text = result.content.join(' ');
   } else if (result.plagiarizedParts || result.matches) {
-    const contentArray = result.plagiarizedParts || result.matches || [];
+    const contentArray = (result.plagiarizedParts || result.matches || []) as any[];
     text = contentArray.map(item => item.text).join(' ');
     
     if (result.originalContent) {
