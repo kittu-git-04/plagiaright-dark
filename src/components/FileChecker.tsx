@@ -1,9 +1,12 @@
+
 import React, { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileUp, File, RefreshCw, X, FileText, Check, PercentCircle, Edit } from "lucide-react";
+import { FileUp, File, RefreshCw, X, FileText, Check, PercentCircle, Edit, Download, LineChart } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
+import DetailedAnalysis from './DetailedAnalysis';
+import { generatePdfReport } from '@/utils/reportGenerator';
 
 const FileChecker = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -25,6 +28,7 @@ const FileChecker = () => {
       originalityPercent: number;
     }[];
   }>(null);
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
   
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -241,6 +245,44 @@ const FileChecker = () => {
   const resetCheck = () => {
     setFile(null);
     setResult(null);
+  };
+
+  const handleViewDetailedAnalysis = () => {
+    if (result) {
+      setShowDetailedAnalysis(true);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    if (!result) return;
+    
+    toast({
+      title: "Generating report",
+      description: "Preparing your plagiarism report for download...",
+    });
+    
+    try {
+      const pdfUrl = await generatePdfReport(result, 'file');
+      
+      // Create a link element to trigger the download
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `${result.fileName.split('.')[0]}-plagiarism-report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Report downloaded",
+        description: "Your plagiarism analysis report has been successfully downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error generating report",
+        description: "There was an error generating your report. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -474,10 +516,21 @@ const FileChecker = () => {
                     </div>
                     
                     <div className="pt-4 flex gap-3 flex-wrap">
-                      <Button className="flex-1" variant={result.score > 10 ? "default" : "outline"}>
+                      <Button 
+                        className="flex-1" 
+                        onClick={handleDownloadReport}
+                        disabled={!result}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
                         Download Full Report
                       </Button>
-                      <Button className="flex-1" variant="outline">
+                      <Button 
+                        className="flex-1" 
+                        variant="outline" 
+                        onClick={handleViewDetailedAnalysis}
+                        disabled={!result}
+                      >
+                        <LineChart className="mr-2 h-4 w-4" />
                         View Detailed Analysis
                       </Button>
                     </div>
@@ -488,6 +541,14 @@ const FileChecker = () => {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Detailed Analysis Dialog */}
+      <DetailedAnalysis 
+        open={showDetailedAnalysis} 
+        onClose={() => setShowDetailedAnalysis(false)} 
+        result={result} 
+        type="file"
+      />
     </div>
   );
 };
